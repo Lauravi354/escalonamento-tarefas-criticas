@@ -10,7 +10,55 @@ typedef struct Tarefa {
     int periodo;
     int deadline;
     int burst;
+
+    int restante;
+    int proxima_chegada;
+    int deadline_absoluto;
+    int ativa;
+
+    int completas;
+    int perdidas;
+    int killed;
 } Tarefa;
+
+
+void verificar_chegadas(Tarefa tarefas[], int qtd_tarefas, int tempo) {
+
+    for (int i = 0; i < qtd_tarefas; i++) {
+
+        if (tempo == tarefas[i].proxima_chegada) {
+
+            tarefas[i].restante = tarefas[i].burst;
+
+            tarefas[i].deadline_absoluto = tempo + tarefas[i].deadline;
+
+            tarefas[i].ativa = 1;
+
+            tarefas[i].proxima_chegada += tarefas[i].periodo;
+        }
+    }
+}
+
+int escolher_rate(Tarefa tarefas[], int qtd_tarefas) {
+
+    int escolhida = -1;
+
+    for (int i = 0; i < qtd_tarefas; i++) {
+
+        if (tarefas[i].ativa == 0) {
+            continue;
+        }
+
+        if (escolhida == -1) {
+            escolhida = i;
+        }
+        else if (tarefas[i].periodo < tarefas[escolhida].periodo) {
+            escolhida = i;
+        }
+    }
+
+    return escolhida;
+}
 
 int main(int argc, char *argv[]) {
 
@@ -82,6 +130,15 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
+        t->restante = 0;
+        t->proxima_chegada = 0;
+        t->deadline_absoluto = 0;
+        t->ativa = 0;
+        
+        t->completas = 0;
+        t->perdidas = 0;
+        t->killed = 0;
+        
         qtd_tarefas++;
     }
 
