@@ -60,6 +60,20 @@ int escolher_rate(Tarefa tarefas[], int qtd_tarefas) {
     return escolhida;
 }
 
+void verificar_deadlines(Tarefa tarefas[], int qtd_tarefas, int tempo) {
+
+    for (int i = 0; i < qtd_tarefas; i++) {
+
+        if (tarefas[i].ativa == 1 && tarefas[i].deadline_absoluto == tempo && tarefas[i].restante > 0) {
+
+            tarefas[i].perdidas++;
+
+            tarefas[i].restante = 0;
+            tarefas[i].ativa = 0;
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
 
     if (argc != 3) {
