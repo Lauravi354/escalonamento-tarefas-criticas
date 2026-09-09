@@ -74,6 +74,28 @@ void verificar_deadlines(Tarefa tarefas[], int qtd_tarefas, int tempo) {
     }
 }
 
+void executar_rate(Tarefa tarefas[], int qtd_tarefas, int tempo_total) {
+
+    for (int tempo = 0; tempo < tempo_total; tempo++) {
+
+        verificar_deadlines(tarefas, qtd_tarefas, tempo);
+
+        verificar_chegadas(tarefas, qtd_tarefas, tempo);
+
+        int escolhida = escolher_rate(tarefas, qtd_tarefas);
+
+        if (escolhida != -1) {
+
+            tarefas[escolhida].restante--;
+
+            if (tarefas[escolhida].restante == 0) {
+                tarefas[escolhida].completas++;
+                tarefas[escolhida].ativa = 0;
+            }
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
 
     if (argc != 3) {
@@ -163,6 +185,10 @@ int main(int argc, char *argv[]) {
     }
 
     fclose(arquivo);
+
+    if (strcmp(argv[1], "rate") == 0) {
+        executar_rate(tarefas, qtd_tarefas, tempo_total);
+    }
 
     return 0;
 }
