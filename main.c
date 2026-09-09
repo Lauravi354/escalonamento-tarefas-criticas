@@ -21,6 +21,11 @@ typedef struct Tarefa {
     int killed;
 } Tarefa;
 
+typedef struct Bloco {
+    int tarefa;
+    int duracao;
+    char status;
+} Bloco;
 
 void verificar_chegadas(Tarefa tarefas[], int qtd_tarefas, int tempo) {
 
@@ -60,40 +65,160 @@ int escolher_rate(Tarefa tarefas[], int qtd_tarefas) {
     return escolhida;
 }
 
-void verificar_deadlines(Tarefa tarefas[], int qtd_tarefas, int tempo) {
+int verificar_deadlines(Tarefa tarefas[], int qtd_tarefas, int tempo, int tarefa_anterior) {
+
+    int perdida = -1;
 
     for (int i = 0; i < qtd_tarefas; i++) {
 
-        if (tarefas[i].ativa == 1 && tarefas[i].deadline_absoluto == tempo && tarefas[i].restante > 0) {
+        Tarefa *t = &tarefas[i];
 
-            tarefas[i].perdidas++;
+        if (t->ativa == 1 &&
+            t->deadline_absoluto == tempo &&
+            t->restante > 0) {
 
-            tarefas[i].restante = 0;
-            tarefas[i].ativa = 0;
+            t->perdidas++;
+
+            t->restante = 0;
+            t->ativa = 0;
+
+            if (i == tarefa_anterior) {
+                perdida = i;
+            }
         }
     }
+
+    return perdida;
 }
 
 void executar_rate(Tarefa tarefas[], int qtd_tarefas, int tempo_total) {
 
+    FILE *saida = fopen("rate_lvsa.out", "w");
+
+    if (saida == NULL) {
+        fprintf(stderr, "Erro: nao foi possivel criar o arquivo de saida.\n");
+        return;
+    }
+
+    Bloco *blocos = malloc(sizeof(Bloco) * tempo_total);
+
+    if (blocos == NULL) {
+        fprintf(stderr, "Erro: falha de memoria.\n");
+        return;
+    }
+
+    int qtd_blocos = 0;
+    int tarefa_anterior = -2;
+
     for (int tempo = 0; tempo < tempo_total; tempo++) {
 
-        verificar_deadlines(tarefas, qtd_tarefas, tempo);
+        int perdida = verificar_deadlines(tarefas, qtd_tarefas, tempo, tarefa_anterior);
+        if (perdida == tarefa_anterior && qtd_blocos > 0) {
+            Bloco *anterior = &blocos[qtd_blocos - 1];
+            anterior->status = 'L';
+        }
+
+        if (tarefa_anterior >= 0 && tarefas[tarefa_anterior].ativa == 0) {
+            tarefa_anterior = -2;
+        }
 
         verificar_chegadas(tarefas, qtd_tarefas, tempo);
 
         int escolhida = escolher_rate(tarefas, qtd_tarefas);
+
+        if (escolhida != tarefa_anterior) {
+
+            if (tarefa_anterior >= 0 && tarefas[tarefa_anterior].ativa == 1) {
+                Bloco *anterior = &blocos[qtd_blocos - 1];
+                anterior->status = 'H';
+            }
+
+            Bloco *b = &blocos[qtd_blocos];
+
+            b->tarefa = escolhida;
+            b->duracao = 1;
+            b->status = ' ';
+
+            qtd_blocos++;
+            tarefa_anterior = escolhida;
+        }
+        else {
+            Bloco *b = &blocos[qtd_blocos - 1];
+            b->duracao++;
+        }
 
         if (escolhida != -1) {
 
             tarefas[escolhida].restante--;
 
             if (tarefas[escolhida].restante == 0) {
+
                 tarefas[escolhida].completas++;
                 tarefas[escolhida].ativa = 0;
+
+                Bloco *b = &blocos[qtd_blocos - 1];
+                b->status = 'F';
+
+                tarefa_anterior = -2;
             }
         }
     }
+
+    verificar_deadlines(tarefas, qtd_tarefas, tempo_total, tarefa_anterior);
+
+    for (int i = 0; i < qtd_tarefas; i++) {
+
+        Tarefa *t = &tarefas[i];
+
+        if (t->ativa == 1 && t->restante > 0) {
+            t->killed++;
+            t->ativa = 0;
+            t->restante = 0;
+        }
+    }
+
+    fprintf(saida, "EXECUTION BY RATE\n");
+
+    for (int i = 0; i < qtd_blocos; i++) {
+
+        Bloco *b = &blocos[i];
+
+        if (b->tarefa == -1) {
+            fprintf(saida, "idle for %d units\n", b->duracao);
+        }
+        else {
+            fprintf(saida, "[%s] for %d units - %c\n", tarefas[b->tarefa].nome, b->duracao, b->status);
+        }
+    }
+
+    fprintf(saida, "LOST DEADLINES\n");
+
+    for (int i = 0; i < qtd_tarefas; i++) {
+        Tarefa *t = &tarefas[i];
+
+        fprintf(saida, "[%s] %d\n", t->nome, t->perdidas);
+    }
+
+    fprintf(saida, "COMPLETE EXECUTION\n");
+
+    for (int i = 0; i < qtd_tarefas; i++) {
+        Tarefa *t = &tarefas[i];
+
+        fprintf(saida, "[%s] %d\n", t->nome, t->completas);
+    }
+
+    fprintf(saida, "KILLED\n");
+
+    for (int i = 0; i < qtd_tarefas; i++) {
+        Tarefa *t = &tarefas[i];
+
+        fprintf(saida, "[%s] %d\n",
+                t->nome,
+                t->killed);
+    }
+
+    free(blocos);
+    fclose(saida);
 }
 
 int main(int argc, char *argv[]) {
