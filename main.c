@@ -54,11 +54,41 @@ int main(int argc, char *argv[]) {
 
         int resultado = fscanf(arquivo, "%49s %d %d %d", t->nome, &t->periodo, &t->deadline, &t->burst);
 
-        if (resultado != 4) {
+        if (resultado == EOF) {
             break;
         }
 
+        if (resultado != 4) {
+            fprintf(stderr, "Erro: tarefa malformada.\n");
+            fclose(arquivo);
+            return 1;
+        }
+
+        if (t->periodo <= 0 || t->deadline <= 0 || t->burst <= 0) {
+            fprintf(stderr, "Erro: os valores da tarefa devem ser positivos.\n");
+            fclose(arquivo);
+            return 1;
+        }
+
+        if (t->deadline > t->periodo) {
+            fprintf(stderr, "Erro: deadline maior que o periodo.\n");
+            fclose(arquivo);
+            return 1;
+        }
+
+        if (t->burst > t->deadline) {
+            fprintf(stderr, "Erro: burst maior que o deadline.\n");
+            fclose(arquivo);
+            return 1;
+        }
+
         qtd_tarefas++;
+    }
+
+    if (qtd_tarefas == 0) {
+        fprintf(stderr, "Erro: nenhuma tarefa encontrada no arquivo.\n");
+        fclose(arquivo);
+        return 1;
     }
 
     fclose(arquivo);
